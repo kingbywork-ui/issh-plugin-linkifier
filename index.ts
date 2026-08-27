@@ -22,13 +22,18 @@ interface LinkMatch {
     kind: 'url' | 'ip' | 'path'
 }
 
+function containsUrl (line: string): boolean {
+    // URL_RE 带 g 标志，test 会受 lastIndex 影响；用 search 每次从头匹配
+    return line.search(URL_RE) >= 0
+}
+
 function collectMatches (line: string): LinkMatch[] {
     const results: LinkMatch[] = []
     for (const match of line.matchAll(URL_RE)) {
         results.push({ text: match[0], kind: 'url' })
     }
     for (const match of line.matchAll(IPV4_RE)) {
-        if (!URL_RE.test(line)) results.push({ text: match[0], kind: 'ip' })
+        if (!containsUrl(line)) results.push({ text: match[0], kind: 'ip' })
     }
     for (const match of line.matchAll(UNIX_PATH_RE)) {
         results.push({ text: match[1], kind: 'path' })
