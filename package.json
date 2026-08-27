@@ -1,6 +1,6 @@
 {
     "name": "issh-plugin-linkifier",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "终端链接识别插件（issh Tauri 客户端）",
     "type": "module",
     "main": "index.ts",

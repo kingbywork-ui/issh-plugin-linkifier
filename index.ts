@@ -3,7 +3,7 @@ import type { IsshPlugin, IsshPluginContext, IsshPluginManifest, TerminalDecorat
 export const manifest: IsshPluginManifest = {
     id: 'issh-plugin-linkifier',
     name: '链接识别',
-    version: '0.1.0',
+    version: '0.1.1',
     description: '终端输出中的 URL / IP / 文件路径识别，Ctrl+点击 在浏览器打开或复制',
     kind: 'feature',
     entry: 'index.js',
