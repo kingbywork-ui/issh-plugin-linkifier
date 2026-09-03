@@ -11,6 +11,8 @@ export const manifest: IsshPluginManifest = {
     author: 'kingbywork-ui',
     homepage: 'https://github.com/kingbywork-ui/issh-plugin-linkifier',
     repository: 'https://github.com/kingbywork-ui/issh-plugin-linkifier',
+    gatewayApiVersion: '1',
+    capabilities: ['terminal.decorate'],
 }
 
 const URL_RE = /\b(?:https?:\/\/|www\.)[^\s\x00-\x1f"<>\\]+[^\s\x00-\x1f"<>.,:;\\!?)]/gi
@@ -81,8 +83,8 @@ const decorator: TerminalDecoratorDefinition = {
 const plugin: IsshPlugin = {
     manifest,
     activate (ctx: IsshPluginContext) {
-        ctx.registerTerminalDecorator(decorator)
-        ctx.log('info', 'linkifier plugin activated')
+        ctx.gateway.ui.registerTerminalDecorator(decorator)
+        ctx.gateway.log('info', 'linkifier plugin activated')
     },
 }
 
