@@ -15,5 +15,9 @@
         "vite": "^7.0.0"
     },
     "license": "MIT",
-    "repository": "https://github.com/kingbywork-ui/issh-plugin-linkifier"
+    "repository": "https://github.com/kingbywork-ui/issh-plugin-linkifier",
+    "overrides": {
+        "devalue": "5.9.3",
+        "source-map-js": "1.2.2"
+    }
 }
