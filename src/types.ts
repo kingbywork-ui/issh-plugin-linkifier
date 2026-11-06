@@ -28,6 +28,48 @@ export interface PluginStorage {
     keys (): string[]
 }
 
+// Structural subset of xterm 5.4's public API; no runtime dependency on the host.
+export interface BufferCellPosition {
+    x: number
+    y: number
+}
+
+export interface TerminalLink {
+    text: string
+    // Absolute buffer coordinates, 1-based with an inclusive end.
+    range: { start: BufferCellPosition; end: BufferCellPosition }
+    activate (event: MouseEvent, text: string): void
+}
+
+interface BufferCell {
+    getChars (): string
+    getWidth (): number
+}
+
+interface BufferLine {
+    readonly isWrapped: boolean
+    readonly length: number
+    getCell (x: number, cell?: BufferCell): BufferCell | undefined
+}
+
+export interface TerminalDecoratorDefinition {
+    id: string
+    decorate (options: {
+        terminal: {
+            readonly cols: number
+            buffer: { readonly active: {
+                readonly length: number
+                getLine (y: number): BufferLine | undefined
+                getNullCell (): BufferCell
+            } }
+            registerLinkProvider (provider: {
+                provideLinks (bufferLineNumber: number, callback: (links: TerminalLink[] | undefined) => void): void
+            }): { dispose (): void }
+        }
+        dispose (callback: () => void): void
+    }): void
+}
+
 export interface IsshPluginContext {
     manifest: IsshPluginManifest
     gateway: { ui: { registerTerminalDecorator (decorator: TerminalDecoratorDefinition): () => void }; log (level: 'info' | 'warn' | 'error', message: string): void }

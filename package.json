@@ -1,11 +1,12 @@
 {
     "name": "issh-plugin-linkifier",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "终端链接识别插件（issh Tauri 客户端）",
     "type": "module",
     "main": "index.ts",
     "scripts": {
         "build": "vite build",
+        "test": "node --test test/linkifier.test.mjs",
         "package": "node scripts/package.mjs"
     },
     "devDependencies": {
