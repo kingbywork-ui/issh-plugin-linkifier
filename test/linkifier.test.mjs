@@ -87,7 +87,15 @@ test('plugin TypeScript is strict-clean and its decorator accepts the real xterm
             import type { TerminalDecoratorDefinition } from '../src/types'
             declare const terminal: Terminal
             declare const decorator: TerminalDecoratorDefinition
-            decorator.decorate({ terminal, dispose () {} })
+            decorator.decorate({
+                sessionId: 'fixture',
+                kind: 'ssh',
+                title: 'fixture',
+                profile: null,
+                terminal,
+                write () {},
+                dispose () {},
+            })
         `, options.target, true)
         : getSourceFile(name, ...args)
     const xtermTypes = fileURLToPath(new URL('../../../issh-tauri/node_modules/@xterm/xterm/typings/xterm.d.ts', import.meta.url))
