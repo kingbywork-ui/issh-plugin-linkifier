@@ -77,7 +77,7 @@ test('plugin TypeScript is strict-clean and its decorator accepts the real xterm
     const options = {
         strict: true, noEmit: true, target: ts.ScriptTarget.ES2022,
         module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
-        types: [], skipLibCheck: true,
+        types: [], skipLibCheck: true, allowJs: true, noCheck: true,
     }
     const host = ts.createCompilerHost(options)
     const getSourceFile = host.getSourceFile.bind(host)
@@ -118,11 +118,11 @@ test('ordinary URL: exact 1-based inclusive endpoints and no hit on adjacent spa
     assert.equal(hit(link, 23, 1, f.terminal.cols), false)
 })
 
-test('repeated URL, IP and path retain their own regex match positions', async (t) => {
+test('repeated URL retains its own regex match position', async (t) => {
     const f = fixture(t)
-    const text = 'https://a.test https://a.test 1.2.3.4 1.2.3.4 /tmp/a /tmp/a'
+    const text = 'https://a.test https://a.test'
     await f.write(text)
-    const expected = ['https://a.test', 'https://a.test', '1.2.3.4', '1.2.3.4', '/tmp/a', '/tmp/a']
+    const expected = ['https://a.test', 'https://a.test']
     let from = 0
     assert.deepEqual(summaries(f.links()), expected.map((value) => {
         const index = text.indexOf(value, from)
@@ -174,18 +174,33 @@ test('a different Unicode width provider still uses cell-reported emoji widths',
 
 test('empty interior cells are spaces, not removed text', async (t) => {
     const f = fixture(t)
-    await f.write('https://a.test\x1b[3C1.2.3.4')
+    await f.write('https://a.test\x1b[3Chttps://b.test')
     assert.deepEqual(summaries(f.links()), [
         { text: 'https://a.test', range: range(1, 1, 14, 1) },
-        { text: '1.2.3.4', range: range(18, 1, 24, 1) },
+        { text: 'https://b.test', range: range(18, 1, 31, 1) },
     ])
 })
 
-test('only true overlaps are excluded; separate IPs survive URL/path matches', async (t) => {
+test('bare IPs, version numbers and file paths are not links', async (t) => {
     const f = fixture(t, { cols: 160 })
-    await f.write('https://1.2.3.4/tmp/a 8.8.8.8 /tmp/9.9.9.9 0.0.0.0 255.255.255.255 256.1.1.1 1.999.2.3 999.999.999.999')
+    await f.write('1.2.3.4 8.8.8.8 255.255.255.255 10.0.19045.0 192.168.10.20:22 /tmp/a /etc/passwd /usr/local/bin C:\\Windows')
+    assert.deepEqual(f.links(), [])
+})
+
+test('www text is only a link as part of an http(s) URL', async (t) => {
+    const f = fixture(t, { cols: 160 })
+    await f.write('see foo.www.log in prose www. and www.example.test')
+    assert.deepEqual(f.links(), [])
+    await f.write('\r\x1b[2K')
+    await f.write('https://www.example.test/a  www.example.test')
+    assert.deepEqual(f.links().map((link) => link.text), ['https://www.example.test/a'])
+})
+
+test('trailing punctuation is trimmed; balanced brackets inside the URL are kept', async (t) => {
+    const f = fixture(t, { cols: 160 })
+    await f.write('(https://a.test/x), https://b.test/y. https://c.test/(p) https://d.test/{a}.')
     assert.deepEqual(f.links().map((link) => link.text), [
-        'https://1.2.3.4/tmp/a', '8.8.8.8', '/tmp/9.9.9.9', '0.0.0.0', '255.255.255.255',
+        'https://a.test/x', 'https://b.test/y', 'https://c.test/(p', 'https://d.test/{a}',
     ])
 })
 
@@ -202,15 +217,15 @@ test('complete long URL is provided from every soft-wrapped row, but not unrelat
     assert.equal(hit(link, 4, 4, 12), false)
 })
 
-test('wrapped IP and path use the entire match and absolute multi-row endpoints', async (t) => {
+test('wrapped URL uses the entire match and absolute multi-row endpoints', async (t) => {
     const f = fixture(t, { cols: 10 })
-    await f.write('xxxx 192.168.10.20 /tmp/abcdefghijklmnop')
+    await f.write('xxxx https://abcdefgh')
     const links = f.links(2)
     assert.deepEqual(summaries(links), [
-        { text: '192.168.10.20', range: range(6, 1, 8, 2) },
-        { text: '/tmp/abcdefghijklmnop', range: range(10, 2, 10, 4) },
+        { text: 'https://abcdefgh', range: range(6, 1, 1, 3) },
     ])
-    assert.deepEqual(summaries(f.links(3)), summaries(links.slice(1)))
+    assert.deepEqual(summaries(f.links(3)), summaries(links))
+    assert.deepEqual(f.links(4), [])
 })
 
 test('repeated wrapped URLs keep distinct ranges and only appear on their own rows', async (t) => {
@@ -323,17 +338,17 @@ test('decoration owns and disposes its provider', (t) => {
     assert.equal(f.disposeCount, 1)
 })
 
-test('only Ctrl/Meta activates: safe browser arguments, www normalization, full IP/path copy', async (t) => {
+test('only Ctrl/Meta activates: safe browser arguments and www normalization', async (t) => {
     const f = fixture(t, { cols: 12, rows: 12 })
-    await f.write('https://a.test WWW.b.test HTTP://c.test 1.2.3.4 /tmp/abcdefghijkl')
+    await f.write('https://a.test HTTP://c.test WWW.b.test 1.2.3.4 /tmp/abcdefghijkl')
     const links = [...new Map(Array.from({ length: 12 }, (_, i) => f.links(i + 1)).flat().map((link) => [link.text, link])).values()]
-    assert.equal(links.length, 5)
+    // WWW.b.test ends a soft-wrapped row ("www." + a padding cell); it must not be opened.
+    assert.deepEqual(summaries(links).map(({ text }) => text), ['https://a.test', 'HTTP://c.test'])
     const opened = []
-    const copied = []
     const oldWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
     const oldNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
     Object.defineProperty(globalThis, 'window', { configurable: true, value: { open: (...args) => opened.push(args) } })
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: (text) => { copied.push(text); return Promise.resolve() } } } })
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: () => { throw new Error('must not copy') } } } })
     t.after(() => {
         if (oldWindow) Object.defineProperty(globalThis, 'window', oldWindow); else delete globalThis.window
         if (oldNavigator) Object.defineProperty(globalThis, 'navigator', oldNavigator); else delete globalThis.navigator
@@ -343,11 +358,9 @@ test('only Ctrl/Meta activates: safe browser arguments, www normalization, full 
         link.activate({ ctrlKey: false, metaKey: false, shiftKey: true, altKey: true }, link.text)
     }
     assert.deepEqual(opened, [])
-    assert.deepEqual(copied, [])
     for (const modifier of ['ctrlKey', 'metaKey']) {
         for (const link of links) link.activate({ [modifier]: true }, link.text)
     }
-    const expectedUrls = ['https://a.test', 'https://WWW.b.test', 'HTTP://c.test']
+    const expectedUrls = ['https://a.test', 'HTTP://c.test']
     assert.deepEqual(opened, [...expectedUrls, ...expectedUrls].map((url) => [url, '_blank', 'noopener,noreferrer']))
-    assert.deepEqual(copied, ['1.2.3.4', '/tmp/abcdefghijkl', '1.2.3.4', '/tmp/abcdefghijkl'])
 })

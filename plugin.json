@@ -1,8 +1,8 @@
 {
     "id": "issh-plugin-linkifier",
     "name": "链接识别",
-    "version": "0.1.2",
-    "description": "终端输出中的 URL / IP / 文件路径识别，Ctrl+点击 在浏览器打开或复制",
+    "version": "0.1.3",
+    "description": "终端输出中的 URL 识别，Ctrl+点击 在浏览器打开",
     "kind": "feature",
     "minAppVersion": "0.0.1",
     "entry": "index.js",
